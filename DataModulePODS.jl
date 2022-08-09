@@ -7,32 +7,28 @@ using Query
 using Dates
 
 struct Buoys
-    idNumber::Int64
-    depth::Float64
-    distFromShore::Float64
-    startYear::Int64
-    latestYear::Int64
-    latitude::Float64
-    longitude::Float64
-    completeFilePath::String
+    IDNumber::Int64
+    Depth::Float64
+    DistFromShore::Float64
 end
 
 struct BuoyDF
     yearsIncluded::Any
-    buoyRepresented::Buoys
-    columnsContained::Array
-    buoyDataFrame::DataFrame
+    BuoyRepresented::Buoys
+    ColumnsContained::Array
+    MissingValue::Any
 end
 
 
 struct Columns
-    shortName::Symbol
+    shortname::Symbol
     formalName::String
     units::String
     uncertainty::Float64
-    errValue::Float64
+    errValue::Array
     info::String
     defaultBins::Int64
+    normalLimits::Array
 end
 
 
@@ -40,27 +36,27 @@ end
 Want to be explicit
 If we can agree on one abbreviation that doesn't conflict and is used often, it is fine, we just need to keep track. 
 =#
-DateTimeCol = Columns(:dt, "Date/Time", " ", 0, 99.0, "GMT/UTC", 31)
-YearCol = Columns(:yr,"Year"," ", 0, 99.0, "GMT/UTC", 50)
-MonthCol = Columns(:mo,"Month"," ", 0, 99.0, "GMT/UTC", 12)
-DayCol = Columns(:day,"Day"," ", 0, 99.0, "GMT/UTC", 31)
-HourCol = Columns(:hr,"Hour"," ", 0, 99.0, "GMT/UTC", 24)
-MinCol = Columns(:min,"Minutes"," ", 0, 99.0, "GMT/UTC", 12)
-WindDirCol = Columns(:wdir,"Wind Direction","Degrees CW from North", 0, 999.0, 
-"Wind direction (the direction the wind is coming from in degrees clockwise from true N) during the same period used for WSPD", 36)
-WindSpdCol = Columns(:wspd,"Wind Speed","m/s",0.0,99.0, "Wind speed (m/s) averaged over an eight-minute period for buoys and a two-minute period for land stations.", 40)
-GustSpdCol = Columns(:gst,"Wind Gust Speed","m/s",0.0,99.0, "Peak 5 or 8 second gust speed (m/s) measured during the eight-minute or two-minute period. The 5 or 8 second period can be determined by payload, See the Sensor Reporting, Sampling, and Accuracy section", 40)
-WaveHtCol =  Columns(:wht,"Wave Height","m", 0.5, 99.0, "Significant wave height (meters) is calculated as the average of the highest one-third of all of the wave heights during the 20-minute sampling period. See the Wave Measurements section.", 30) 
-DomWavePeriodCol = Columns(:dpd,"Dominant Wave Period", "Seconds",0.0,99.0, "Dominant wave period (seconds) is the period with the maximum wave energy.", 50) 
-AvWavePeriodCol = Columns(:apd,"Average Wave Period", "Seconds",0.0,99.0, "Average wave period (seconds) of all waves during the 20-minute period.", 50) 
-DomWaveDirCol = Columns(:mwd,"Direction of Dominant Wave Period","Degrees Clockwise from North",0.0,999.0,
+DateTimeCol = Columns(:dt, "Date/Time", " ", 0, [99.0], "GMT/UTC", 31, [])
+YearCol = Columns(:yr,"Year"," ", 0, [99.0], "GMT/UTC", 50, [0, 2022])
+MonthCol = Columns(:mo,"Month"," ", 0, [99.0], "GMT/UTC", 12, [1, 12])
+DayCol = Columns(:day,"Day"," ", 0, [99.0], "GMT/UTC", 31, [1, 31])
+HourCol = Columns(:hr,"Hour"," ", 0, [99.0], "GMT/UTC", 24, [0, 24])
+MinCol = Columns(:min,"Minutes"," ", 0, [99.0], "GMT/UTC", 12, [0, 60])
+WindDirCol = Columns(:wdir,"Wind Direction","Degrees CW from North", 0, [999.0], 
+"Wind direction (the direction the wind is coming from in degrees clockwise from true N) during the same period used for WSPD", 36, [0, 360])
+WindSpdCol = Columns(:wspd,"Wind Speed","m/s",0.0,[99.0], "Wind speed (m/s) averaged over an eight-minute period for buoys and a two-minute period for land stations.", 40, [0, 98])
+GustSpdCol = Columns(:gst,"Wind Gust Speed","m/s",0.0,[99.0], "Peak 5 or 8 second gust speed (m/s) measured during the eight-minute or two-minute period. The 5 or 8 second period can be determined by payload, See the Sensor Reporting, Sampling, and Accuracy section", 40, [0, 98])
+WaveHtCol =  Columns(:wht,"Wave Height","m", 0.5, [99.0], "Significant wave height (meters) is calculated as the average of the highest one-third of all of the wave heights during the 20-minute sampling period. See the Wave Measurements section.", 30, [0, 20]) 
+DomWavePeriodCol = Columns(:dpd,"Dominant Wave Period", "Seconds",0.0,[99.0], "Dominant wave period (seconds) is the period with the maximum wave energy.", 50, 98, [0, 10]) 
+AvWavePeriodCol = Columns(:apd,"Average Wave Period", "Seconds",0.0,[99.0], "Average wave period (seconds) of all waves during the 20-minute period.", 50, [0, 10])  
+DomWaveDirCol = Columns(:mwd,"Direction of Dominant Wave Period","Degrees Clockwise from North",0.0,[999.0],
 "The direction from which the waves at the dominant period (DPD) are coming. The units are degrees from true North, increasing clockwise, with North as 0 (zero) degrees and East as 90 degrees. See the Wave Measurements section.", 36) 
-SeaPressureCol = Columns(:pr,"Sea Level Pressure","hPa",0.0,999.0, "Sea level pressure (hPa)", 30) 
-AirTempCol = Columns(:atmp,"Air Temperature","Celsius",0.0,99.0, " ", 50) 
-WaterTempCol = Columns(:wtmp,"Sea Surface Temperature","Celsius",0.0,99.0, " ", 50) 
-DewPointTempCol = Columns(:dew,"Dewpoint Temperature", "Celsius?",0.0,99.0, "Dewpoint temperature taken at the same height as the air temperature measurement.", 50) 
-VisibilityCol = Columns(:vis,"Station Visibility","Nautical Miles",0.0,99.0, "Station visibility (nautical miles). Note that buoy stations are limited to reports from 0 to 1.6 nmi.", 32) 
-TidalWaterLevelCol = Columns(:tide,"Water Level","Feet above MLLW",0.0,99.0, "The water level in feet above or below Mean Lower Low Water (MLLW).", 25) 
+SeaPressureCol = Columns(:pr,"Sea Level Pressure","hPa",0.0,[999.0], "Sea level pressure (hPa)", 30, [1000, 1200]) 
+AirTempCol = Columns(:atmp,"Air Temperature","Celsius",0.0,[99.0], " ", 50, [-30, 70]) 
+WaterTempCol = Columns(:wtmp,"Sea Surface Temperature","Celsius",0.0,[99.0], " ", 50, [-30, 70]) 
+DewPointTempCol = Columns(:dew,"Dewpoint Temperature", "Celsius?",0.0,[99.0], "Dewpoint temperature taken at the same height as the air temperature measurement.", 50, [-30, 70]) 
+VisibilityCol = Columns(:vis,"Station Visibility","Nautical Miles",0.0,[99.0], "Station visibility (nautical miles). Note that buoy stations are limited to reports from 0 to 1.6 nmi.", 32, [0, 1.6]) 
+TidalWaterLevelCol = Columns(:tide,"Water Level","Feet above MLLW",0.0,[99.0], "The water level in feet above or below Mean Lower Low Water (MLLW).", 25, [0, 60]) 
 
 DefaultColumns = [YearCol, MonthCol, DayCol, HourCol, MinCol, WindDirCol, WindSpdCol, GustSpdCol, WaveHtCol, DomWavePeriodCol, AvWavePeriodCol, DomWaveDirCol, SeaPressureCol, AirTempCol, WaterTempCol,
 DewPointTempCol, VisibilityCol, TidalWaterLevelCol]
@@ -81,7 +77,7 @@ function formatFileToDataFrame(filePath, numOfHeaders)
     df = CSV.read(filePath, DataFrame, header=1:numOfHeaders, delim=" ", ignorerepeated=true)
     columnObjIndex = 1
     for colName in names(df)
-        rename!(df, [colName => DefaultColumns[columnObjIndex].shortName])
+        rename!(df, [colName => DefaultColumns[columnObjIndex].shortname])
         columnObjIndex += 1
     end
     return df
@@ -93,7 +89,7 @@ function formattedCSVToDataFrame(filePath)
     df = CSV.read(filePath, DataFrame)
     columnObjIndex = 1
     for colName in names(df)
-        rename!(df, [colName => DefaultColumns[columnObjIndex].shortName])
+        rename!(df, [colName => DefaultColumns[columnObjIndex].shortname])
         columnObjIndex += 1
     end
     return df
@@ -114,12 +110,12 @@ function changeDateFormatToDateTime(df)
     =#
     dateTimeColumn = DataFrame(temporaryName = DateTime[])
     for row in eachrow(df)
-        dateTime = "$(row[MonthCol.shortName])/$(row[DayCol.shortName])/$(row[YearCol.shortName]) $(row[HourCol.shortName]):$(row[MinCol.shortName])"
+        dateTime = "$(row[MonthCol.shortname])/$(row[DayCol.shortname])/$(row[YearCol.shortname]) $(row[HourCol.shortname]):$(row[MinCol.shortname])"
         dateTime = Dates.DateTime(dateTime, "mm/dd/yyyy HH:MM")
         push!(dateTimeColumn, [dateTime])
     end
     temporaryDF =  hcat(dateTimeColumn, select(df, Not(1:5)))
-    return rename(temporaryDF, [:temporaryName => dt_h.shortName])
+    return rename(temporaryDF, [:temporaryName => dt_h.shortname])
 end
 
 function changeDateFormatToOriginal(df)
@@ -140,7 +136,7 @@ function changeDateFormatToOriginal(df)
     hourColumn = DataFrame(temp4 = Int[])
     minuteColumn = DataFrame(temp5 = Int[])
     for row in eachrow(df)
-        currDate = row[dt_h.shortName]
+        currDate = row[dt_h.shortname]
         push!(yearColumn, [Dates.year(currDate)])
         push!(monthColumn, [Dates.month(currDate)])
         push!(dayColumn, [Dates.day(currDate)])
@@ -148,8 +144,8 @@ function changeDateFormatToOriginal(df)
         push!(minuteColumn, [Dates.minute(currDate)])
     end
     temporaryDF = hcat(yearColumn, monthColumn, dayColumn, hourColumn, minuteColumn, select(df, Not(1)))
-    rename!(temporaryDF, [:temp1 => YearCol.shortName, :temp2 => MonthCol.shortName, :temp3 => DayCol.shortName,
-    :temp4 => HourCol.shortName, :temp5 => MinCol.shortName])
+    rename!(temporaryDF, [:temp1 => YearCol.shortname, :temp2 => MonthCol.shortname, :temp3 => DayCol.shortname,
+    :temp4 => HourCol.shortname, :temp5 => MinCol.shortname])
     return temporaryDF
 end
 
@@ -166,7 +162,7 @@ function findPercentile(df, column, percentile)
     RETURNS:
     sortedColumn[indexOfPercentile]: This is a number which is the lowest value within the given percentile of the given column
     =#
-    sortedColumn = sort(df[:,column.shortName])
+    sortedColumn = sort(df[:,column.shortname])
     indexOfPercentile = Int(round((percentile/100)* size(df)[1]))
     return sortedColumn[indexOfPercentile]
 end
@@ -185,12 +181,12 @@ function findPercentile(df, column, percentile, printOut)
     RETURNS:
     sortedColumn[indexOfPercentile]: This is a number which is the lowest value within the given percentile of the given column
     =#
-    sortedColumn = sort(df[!,column.shortName])
+    sortedColumn = sort(df[!,column.shortname])
     indexOfPercentile = Int(round((percentile/100)* size(df)[1]))
     #Prints statement so you can see the exact percentile found: percentile will almost never be a nice
     #round number.
     if(printOut)
-        println("Found value ", df[!, column.shortName][indexOfPercentile], " is the ", percentile, " percentile.")
+        println("Found value ", df[!, column.shortname][indexOfPercentile], " is the ", percentile, " percentile.")
     end
     return sortedColumn[indexOfPercentile]
 end
@@ -211,9 +207,9 @@ function filterDataFrame(dataFrame, column, lowerBound, upperBound)
     =#
     #We have to rename the selected column temporarily to a default name to make the @filter command work.
     workingDF = copy(dataFrame)
-    rename!(workingDF,[column.shortName => :FilterColumn])
+    rename!(workingDF,[column.shortname => :FilterColumn])
     filteredDF =  workingDF |> @filter(_.FilterColumn >= lowerBound && _.FilterColumn <= upperBound) |> DataFrame
-    rename!(filteredDF,[:FilterColumn => column.shortName])
+    rename!(filteredDF,[:FilterColumn => column.shortname])
     return filteredDF
 end
 
@@ -527,7 +523,7 @@ function quickHistogram(df, column)
     if isempty(workingDF)
         return plot()
     else
-        return Plots.histogram(workingDF[:, column.shortName], xlabel = xAxisTitle, bins = column.defaultBins)
+        return Plots.histogram(workingDF[:, column.shortname], xlabel = xAxisTitle, bins = column.defaultBins)
     end
 end
 
@@ -553,7 +549,7 @@ function quickHistogram(df, column, customBins)
     if isempty(workingDF)
         return plot()
     else
-        return Plots.histogram(workingDF[:, column.shortName], xlabel = xAxisTitle, bins = customBins, xticks = customBins)
+        return Plots.histogram(workingDF[:, column.shortname], xlabel = xAxisTitle, bins = customBins, xticks = customBins)
     end
 end
 
@@ -577,9 +573,9 @@ function filterMissing(df, column)
     #Renaming the column we wish to filter, as the iterator in the @filter command is very picky about the column selection.
     #We need to give it a specific column, so to generalize this I set whatever column we are filtering to FilterColumn, 
     #And change it back after the filtering command.
-    rename!(temporaryDF,[column.shortName => :FilterColumn])
+    rename!(temporaryDF,[column.shortname => :FilterColumn])
     filteredDF =  temporaryDF |> @filter(_.FilterColumn != errorValue) |> DataFrame
-    rename!(filteredDF,[:FilterColumn => column.shortName])
+    rename!(filteredDF,[:FilterColumn => column.shortname])
     return filteredDF
 end
 
@@ -599,9 +595,9 @@ function compareFrequencyPlots(df1, df2, column, labels)
     =#
     df1e = filterMissing(df1, column)
     df2e =  filterMissing(df2, column)
-    newHistogramPlot = histogram(df1e[:, column.shortName], bins = column.defaultBins, label = labels[1], alpha = 0.8, 
+    newHistogramPlot = histogram(df1e[:, column.shortname], bins = column.defaultBins, label = labels[1], alpha = 0.8, 
     title = column.formalName * " in " * labels[1] * " and " * labels[2], xlabel = column.formalName * " (" * column.units * ")", ylabel = "Measurements")
-    histogram!(newHistogramPlot, df2e[:, column.shortName], bins = column.defaultBins, alpha = 0.8, label = labels[2])
+    histogram!(newHistogramPlot, df2e[:, column.shortname], bins = column.defaultBins, alpha = 0.8, label = labels[2])
     return newHistogramPlot
 end
 
@@ -645,7 +641,7 @@ function createABoxPlot(df, xColumn, yColumn)
     titleString = titleString
     xAxisTitle = xColumn.formalName
     yAxisTitle = yColumn.formalName
-    xData = df[!, xColumn.shortName]
-    yData = df[!, yColumn.shortName]
+    xData = df[!, xColumn.shortname]
+    yData = df[!, yColumn.shortname]
     return boxplot(xData, yData, title = titleString, ylabel = yAxisTitle,  xlabel = xAxisTitle)
 end
