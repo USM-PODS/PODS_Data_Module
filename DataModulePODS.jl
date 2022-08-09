@@ -7,22 +7,27 @@ using Query
 using Dates
 
 struct Buoys
-    IDNumber::Int64
-    Depth::Float64
-    DistFromShore::Float64
+    idNumber::Int64
+    depth::Float64
+    distFromShore::Float64
+    startYear::Int64
+    latestYear::Int64
+    latitude::Float64
+    longitude::Float64
+    completeFilePath::String
 end
 
 struct BuoyDF
     yearsIncluded::Any
-    BuoyRepresented::Buoys
-    ColumnsContained::Array
-    MissingValue::Any
+    buoyRepresented::Buoys
+    columnsContained::Array
+    buoyDataFrame::DataFrame
 end
 
 
 struct Columns
-    shortname::Symbol
-    formalname::String
+    shortName::Symbol
+    formalName::String
     units::String
     uncertainty::Float64
     errValue::Float64
@@ -76,19 +81,19 @@ function formatFileToDataFrame(filePath, numOfHeaders)
     df = CSV.read(filePath, DataFrame, header=1:numOfHeaders, delim=" ", ignorerepeated=true)
     columnObjIndex = 1
     for colName in names(df)
-        rename!(df, [colName => DefaultColumns[columnObjIndex].shortname])
+        rename!(df, [colName => DefaultColumns[columnObjIndex].shortName])
         columnObjIndex += 1
     end
     return df
 end
 
-#YearCol.formalname
+#YearCol.formalName
 
 function formattedCSVToDataFrame(filePath)
     df = CSV.read(filePath, DataFrame)
     columnObjIndex = 1
     for colName in names(df)
-        rename!(df, [colName => DefaultColumns[columnObjIndex].shortname])
+        rename!(df, [colName => DefaultColumns[columnObjIndex].shortName])
         columnObjIndex += 1
     end
     return df
@@ -109,12 +114,12 @@ function changeDateFormatToDateTime(df)
     =#
     dateTimeColumn = DataFrame(temporaryName = DateTime[])
     for row in eachrow(df)
-        dateTime = "$(row[MonthCol.shortname])/$(row[DayCol.shortname])/$(row[YearCol.shortname]) $(row[HourCol.shortname]):$(row[MinCol.shortname])"
+        dateTime = "$(row[MonthCol.shortName])/$(row[DayCol.shortName])/$(row[YearCol.shortName]) $(row[HourCol.shortName]):$(row[MinCol.shortName])"
         dateTime = Dates.DateTime(dateTime, "mm/dd/yyyy HH:MM")
         push!(dateTimeColumn, [dateTime])
     end
     temporaryDF =  hcat(dateTimeColumn, select(df, Not(1:5)))
-    return rename(temporaryDF, [:temporaryName => dt_h.shortname])
+    return rename(temporaryDF, [:temporaryName => dt_h.shortName])
 end
 
 function changeDateFormatToOriginal(df)
@@ -135,7 +140,7 @@ function changeDateFormatToOriginal(df)
     hourColumn = DataFrame(temp4 = Int[])
     minuteColumn = DataFrame(temp5 = Int[])
     for row in eachrow(df)
-        currDate = row[dt_h.shortname]
+        currDate = row[dt_h.shortName]
         push!(yearColumn, [Dates.year(currDate)])
         push!(monthColumn, [Dates.month(currDate)])
         push!(dayColumn, [Dates.day(currDate)])
@@ -143,8 +148,8 @@ function changeDateFormatToOriginal(df)
         push!(minuteColumn, [Dates.minute(currDate)])
     end
     temporaryDF = hcat(yearColumn, monthColumn, dayColumn, hourColumn, minuteColumn, select(df, Not(1)))
-    rename!(temporaryDF, [:temp1 => YearCol.shortname, :temp2 => MonthCol.shortname, :temp3 => DayCol.shortname,
-    :temp4 => HourCol.shortname, :temp5 => MinCol.shortname])
+    rename!(temporaryDF, [:temp1 => YearCol.shortName, :temp2 => MonthCol.shortName, :temp3 => DayCol.shortName,
+    :temp4 => HourCol.shortName, :temp5 => MinCol.shortName])
     return temporaryDF
 end
 
@@ -161,7 +166,7 @@ function findPercentile(df, column, percentile)
     RETURNS:
     sortedColumn[indexOfPercentile]: This is a number which is the lowest value within the given percentile of the given column
     =#
-    sortedColumn = sort(df[:,column.shortname])
+    sortedColumn = sort(df[:,column.shortName])
     indexOfPercentile = Int(round((percentile/100)* size(df)[1]))
     return sortedColumn[indexOfPercentile]
 end
@@ -180,12 +185,12 @@ function findPercentile(df, column, percentile, printOut)
     RETURNS:
     sortedColumn[indexOfPercentile]: This is a number which is the lowest value within the given percentile of the given column
     =#
-    sortedColumn = sort(df[!,column.shortname])
+    sortedColumn = sort(df[!,column.shortName])
     indexOfPercentile = Int(round((percentile/100)* size(df)[1]))
     #Prints statement so you can see the exact percentile found: percentile will almost never be a nice
     #round number.
     if(printOut)
-        println("Found value ", df[!, column.shortname][indexOfPercentile], " is the ", percentile, " percentile.")
+        println("Found value ", df[!, column.shortName][indexOfPercentile], " is the ", percentile, " percentile.")
     end
     return sortedColumn[indexOfPercentile]
 end
@@ -206,9 +211,9 @@ function filterDataFrame(dataFrame, column, lowerBound, upperBound)
     =#
     #We have to rename the selected column temporarily to a default name to make the @filter command work.
     workingDF = copy(dataFrame)
-    rename!(workingDF,[column.shortname => :FilterColumn])
+    rename!(workingDF,[column.shortName => :FilterColumn])
     filteredDF =  workingDF |> @filter(_.FilterColumn >= lowerBound && _.FilterColumn <= upperBound) |> DataFrame
-    rename!(filteredDF,[:FilterColumn => column.shortname])
+    rename!(filteredDF,[:FilterColumn => column.shortName])
     return filteredDF
 end
 
@@ -516,13 +521,13 @@ function quickHistogram(df, column)
     workingDF = copy(df)
     #Filter the missing values from the working DataFrame's selected column.
     workingDF = filterMissing(workingDF, column)
-    #This sets the xaxis title using the field formalname  in the Column object.
-    xAxisTitle = column.formalname
+    #This sets the xaxis title using the field formalName  in the Column object.
+    xAxisTitle = column.formalName
     #The histogram plot object is constructed in the return statement. 
     if isempty(workingDF)
         return plot()
     else
-        return Plots.histogram(workingDF[:, column.shortname], xlabel = xAxisTitle, bins = column.defaultBins)
+        return Plots.histogram(workingDF[:, column.shortName], xlabel = xAxisTitle, bins = column.defaultBins)
     end
 end
 
@@ -542,13 +547,13 @@ function quickHistogram(df, column, customBins)
     workingDF = copy(df)
     #Filter the missing values from the working DataFrame's selected column.
     workingDF = filterMissing(workingDF, column)
-    #This sets the xaxis title using the field formalname  in the Column object.
-    xAxisTitle = column.formalname
+    #This sets the xaxis title using the field formalName  in the Column object.
+    xAxisTitle = column.formalName
     #The histogram plot object is constructed in the return statement. 
     if isempty(workingDF)
         return plot()
     else
-        return Plots.histogram(workingDF[:, column.shortname], xlabel = xAxisTitle, bins = customBins, xticks = customBins)
+        return Plots.histogram(workingDF[:, column.shortName], xlabel = xAxisTitle, bins = customBins, xticks = customBins)
     end
 end
 
@@ -572,9 +577,9 @@ function filterMissing(df, column)
     #Renaming the column we wish to filter, as the iterator in the @filter command is very picky about the column selection.
     #We need to give it a specific column, so to generalize this I set whatever column we are filtering to FilterColumn, 
     #And change it back after the filtering command.
-    rename!(temporaryDF,[column.shortname => :FilterColumn])
+    rename!(temporaryDF,[column.shortName => :FilterColumn])
     filteredDF =  temporaryDF |> @filter(_.FilterColumn != errorValue) |> DataFrame
-    rename!(filteredDF,[:FilterColumn => column.shortname])
+    rename!(filteredDF,[:FilterColumn => column.shortName])
     return filteredDF
 end
 
@@ -594,9 +599,9 @@ function compareFrequencyPlots(df1, df2, column, labels)
     =#
     df1e = filterMissing(df1, column)
     df2e =  filterMissing(df2, column)
-    newHistogramPlot = histogram(df1e[:, column.shortname], bins = column.defaultBins, label = labels[1], alpha = 0.8, 
-    title = column.formalname * " in " * labels[1] * " and " * labels[2], xlabel = column.formalname * " (" * column.units * ")", ylabel = "Measurements")
-    histogram!(newHistogramPlot, df2e[:, column.shortname], bins = column.defaultBins, alpha = 0.8, label = labels[2])
+    newHistogramPlot = histogram(df1e[:, column.shortName], bins = column.defaultBins, label = labels[1], alpha = 0.8, 
+    title = column.formalName * " in " * labels[1] * " and " * labels[2], xlabel = column.formalName * " (" * column.units * ")", ylabel = "Measurements")
+    histogram!(newHistogramPlot, df2e[:, column.shortName], bins = column.defaultBins, alpha = 0.8, label = labels[2])
     return newHistogramPlot
 end
 
@@ -636,11 +641,11 @@ function createABoxPlot(df, xColumn, yColumn)
     Returns a boxplot object with the data plotted.
 
     =#
-    titleString = xColumn.formalname * " vs " * yColumn.formalname
+    titleString = xColumn.formalName * " vs " * yColumn.formalName
     titleString = titleString
-    xAxisTitle = xColumn.formalname
-    yAxisTitle = yColumn.formalname
-    xData = df[!, xColumn.shortname]
-    yData = df[!, yColumn.shortname]
+    xAxisTitle = xColumn.formalName
+    yAxisTitle = yColumn.formalName
+    xData = df[!, xColumn.shortName]
+    yData = df[!, yColumn.shortName]
     return boxplot(xData, yData, title = titleString, ylabel = yAxisTitle,  xlabel = xAxisTitle)
 end
