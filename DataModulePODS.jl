@@ -22,13 +22,18 @@ struct Columns
     formalName::String
     units::String
     uncertainty::Float64
-    errValue::Array
+    errValue::Vector{Any}
     info::String
     defaultBins::Int64
-    normalLimits::Array
+    normalLimits::Vector{Any}
 end
 
+test = Dict(
+    4 => 1,
+    5 => 6
 
+)
+print(test[4])
 #=
 Want to be explicit
 If we can agree on one abbreviation that doesn't conflict and is used often, it is fine, we just need to keep track. 
