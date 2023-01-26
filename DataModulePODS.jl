@@ -14,6 +14,7 @@ struct BuoyDF
     BuoyRepresented::Buoys
     ColumnsContained::Array
     MissingValue::Any
+    Extrathing::Any
 end
 
 
